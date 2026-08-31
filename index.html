@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Galaxy Rush</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: #0b0e1a;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: manipulation;
+    }
+
+    #game-wrapper {
+      background: linear-gradient(145deg, #12162b, #1a1f3a);
+      padding: 16px 16px 20px;
+      border-radius: 48px 48px 28px 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+      max-width: 500px;
+      width: 100%;
+      margin: 12px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 400 / 600;
+      background: radial-gradient(circle at 20% 20%, #1b2340, #0b0e1a);
+      border-radius: 28px;
+      box-shadow: inset 0 0 30px rgba(0, 20, 80, 0.6);
+      touch-action: none;
+      cursor: pointer;
+      margin: 0 auto;
+    }
+
+    /* UI overlay (menu, skor) */
+    #ui-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 400 / 600;
+      margin: 0 auto;
+      touch-action: none;
+    }
+
+    #menu-screen,
+    #gameover-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(8, 12, 30, 0.7);
+      backdrop-filter: blur(6px);
+      border-radius: 28px;
+      padding: 20px;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    #menu-screen.active,
+    #gameover-screen.active {
+      pointer-events: auto;
+      opacity: 1;
+    }
+
+    .game-title {
+      font-size: 3.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #f7e05e, #f9b042);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(250, 180, 50, 0.3);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .game-sub {
+      color: #a8c0ff;
+      font-size: 1rem;
+      letter-spacing: 6px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+
+    .btn {
+      background: linear-gradient(145deg, #f7c948, #f0a030);
+      border: none;
+      padding: 14px 44px;
+      border-radius: 80px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #141b2b;
+      box-shadow: 0 8px 0 #8f5f1a, 0 10px 25px rgba(0, 0, 0, 0.5);
+      transition: all 0.08s ease;
+      margin: 10px 0;
+      min-width: 180px;
+      letter-spacing: 1px;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+
+    .btn:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 #8f5f1a;
+    }
+
+    .btn-secondary {
+      background: #2e3a6b;
+      box-shadow: 0 6px 0 #151e38, 0 8px 20px rgba(0, 0, 0, 0.4);
+      color: #d0ddff;
+      font-size: 1.1rem;
+      padding: 10px 30px;
+      min-width: 140px;
+    }
+
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      width: 80%;
+      max-width: 300px;
+      color: #b8ceff;
+      font-weight: 600;
+      font-size: 1.2rem;
+      margin: 6px 0;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 16px;
+      border-radius: 40px;
+      backdrop-filter: blur(2px);
+    }
+
+    .score-row span {
+      color: #f7e05e;
+    }
+
+    #highscore-display {
+      color: #ffb347;
+    }
+
+    .pause-badge {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      padding: 6px 14px;
+      border-radius: 40px;
+      color: #ffd966;
+      font-weight: 700;
+      font-size: 1rem;
+      border: 1px solid #ffd96655;
+      pointer-events: none;
+      opacity: 0;
+      transition: 0.2s;
+    }
+
+    .pause-badge.show {
+      opacity: 1;
+    }
+
+    #controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 8px 0;
+      gap: 10px;
+    }
+
+    .ctrl-btn {
+      background: #20294e;
+      border: none;
+      border-radius: 60px;
+      color: #c8dcff;
+      font-size: 1.5rem;
+      font-weight: 700;
+      padding: 10px 0;
+      flex: 1;
+      box-shadow: 0 6px 0 #0b1124, 0 4px 15px rgba(0, 0, 0, 0.5);
+      transition: 0.06s linear;
+      touch-action: manipulation;
+      cursor: pointer;
+      text-align: center;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-btn:active {
+      transform: translateY(5px);
+      box-shadow: 0 1px 0 #0b1124;
+    }
+
+    .ctrl-btn.left {
+      border-radius: 60px 20px 20px 60px;
+    }
+    .ctrl-btn.right {
+      border-radius: 20px 60px 60px 20px;
+    }
+    .ctrl-btn.action {
+      background: #e7a53b;
+      color: #141b2b;
+      box-shadow: 0 6px 0 #8f5f1a;
+      flex: 1.2;
+      font-size: 1.3rem;
+    }
+
+    .ctrl-btn.action:active {
+      transform: translateY(5px);
+      box-shadow: 0 1px 0 #8f5f1a;
+    }
+
+    @media (max-width: 500px) {
+      .game-title {
+        font-size: 2.8rem;
+      }
+      .btn {
+        padding: 12px 30px;
+        font-size: 1.2rem;
+        min-width: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="game-wrapper">
+  <!-- Canvas & overlay -->
+  <div id="ui-container">
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <!-- Menu -->
+    <div id="menu-screen" class="active">
+      <div class="game-title">🚀 GALAXY RUSH</div>
+      <div class="game-sub">•  survival  •</div>
+      <div style="margin: 12px 0;">
+        <div class="score-row">🏆 HIGH <span id="menu-high">0</span></div>
+      </div>
+      <button class="btn" id="startBtn">▶ &nbsp;START</button>
+      <div style="margin-top: 12px; color: #7f93cc; font-size:0.85rem;">⬅️ ➡️  geser / keyboard</div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameover-screen">
+      <div style="font-size: 2.5rem; font-weight: 800; color: #f77f6e; text-shadow: 0 0 20px #ff4444aa;">💥 GAME OVER</div>
+      <div class="score-row" style="margin-top:16px;">⭐ SKOR <span id="final-score">0</span></div>
+      <div class="score-row">🏅 HIGH <span id="final-high">0</span></div>
+      <button class="btn" id="restartBtn">🔄 &nbsp;RETRY</button>
+      <button class="btn btn-secondary" id="menuBtn">🏠 MENU</button>
+    </div>
+
+    <!-- Pause badge -->
+    <div class="pause-badge" id="pauseBadge">⏸ PAUSED</div>
+  </div>
+
+  <!-- kontrol tombol -->
+  <div id="controls">
+    <button class="ctrl-btn left" id="moveLeft">◀</button>
+    <button class="ctrl-btn action" id="pauseBtn">⏸</button>
+    <button class="ctrl-btn right" id="moveRight">▶</button>
+  </div>
+</div>
+<script>
+  (function() {
+    // ---------- CANVAS & KONTEKS ----------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = 400, H = 600;
+
+    // ---------- ELEMEN UI ----------
+    const menuScreen = document.getElementById('menu-screen');
+    const gameoverScreen = document.getElementById('gameover-screen');
+    const pauseBadge = document.getElementById('pauseBadge');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const moveLeft = document.getElementById('moveLeft');
+    const moveRight = document.getElementById('moveRight');
+
+    const menuHigh = document.getElementById('menu-high');
+    const finalScore = document.getElementById('final-score');
+    const finalHigh = document.getElementById('final-high');
+
+    // ---------- STATE ----------
+    const STATE = { MENU: 0, PLAYING: 1, PAUSED: 2, GAMEOVER: 3 };
+    let gameState = STATE.MENU;
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('galaxyRushHigh')) || 0;
+
+    // ---------- OBJEK GAME ----------
+    // pesawat (player)
+    const player = {
+      x: 200, y: 520,
+      w: 30, h: 30,
+      speed: 5,
+      dx: 0
+    };
+
+    // rintangan (meteor / musuh)
+    let obstacles = [];
+    let obstacleTimer = 0;
+    let obstacleInterval = 40; // frame
+    let speedBase = 2.5;
+
+    // bintang (efek parallax)
+    let stars = [];
+    for (let i = 0; i < 60; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 1 + 0.4
+      });
+    }
+
+    // ---------- FUNGSI UTILITY ----------
+    function resetGame() {
+      score = 0;
+      player.x = 200;
+      player.dx = 0;
+      obstacles = [];
+      obstacleTimer = 0;
+      obstacleInterval = 40;
+      speedBase = 2.5;
+    }
+
+    // ---------- SAVE HIGH ----------
+    function updateHighScore() {
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('galaxyRushHigh', String(highScore));
+      }
+    }
+
+    // ---------- SPAWN RINTANGAN ----------
+    function spawnObstacle() {
+      const size = 20 + Math.floor(Math.random() * 20); // 20~40
+      const x = Math.random() * (W - size);
+      const type = Math.random() > 0.6 ? 'wide' : 'normal';
+      const w = type === 'wide' ? size * 1.7 : size;
+      const h = type === 'wide' ? size * 0.7 : size;
+      obstacles.push({
+        x, y: -h,
+        w, h,
+        speedY: speedBase + Math.random() * 1.2,
+        color: `hsl(${Math.floor(Math.random() * 40 + 340)}, 70%, 55%)`
+      });
+    }
+
+    // ---------- COLLISION ----------
+    function rectCollide(ax, ay, aw, ah, bx, by, bw, bh) {
+      return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+
+    // ---------- DRAW ----------
+    function drawStars() {
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,240,${0.5+Math.random()*0.3})`;
+        ctx.fill();
+      });
+    }
+
+    function drawPlayer() {
+      // pesawat sederhana
+      const px = player.x, py = player.y;
+      ctx.save();
+      ctx.shadowColor = '#6af';
+      ctx.shadowBlur = 25;
+
+      // body
+      ctx.beginPath();
+      ctx.moveTo(px + 15, py - 20);
+      ctx.lineTo(px + 28, py + 10);
+      ctx.lineTo(px + 20, py + 6);
+      ctx.lineTo(px + 20, py + 18);
+      ctx.lineTo(px + 10, py + 18);
+      ctx.lineTo(px + 10, py + 6);
+      ctx.lineTo(px + 2, py + 10);
+      ctx.closePath();
+      ctx.fillStyle = '#7fc8ff';
+      ctx.fill();
+      ctx.strokeStyle = '#b0e0ff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // kaca
+      ctx.beginPath();
+      ctx.arc(px + 15, py - 8, 7, 0, Math.PI, true);
+      ctx.fillStyle = '#aff0ff';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawObstacles() {
+      obstacles.forEach(o => {
+        ctx.save();
+        ctx.shadowColor = '#ff6655';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = o.color || '#f05a4a';
+        ctx.beginPath();
+        // bentuk meteor tidak beraturan
+        const cx = o.x + o.w/2, cy = o.y + o.h/2;
+        const r = Math.min(o.w, o.h) * 0.6;
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const rad = r * (0.7 + Math.random() * 0.5);
+          const px = cx + Math.cos(angle) * rad;
+          const py = cy + Math.sin(angle) * rad;
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function drawUI() {
+      ctx.fillStyle = '#d0e4ff';
+      ctx.font = 'bold 20px "Segoe UI", sans-serif';
+      ctx.fillText('⭐ ' + score, 20, 40);
+      ctx.fillStyle = '#f7c948';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('🏆 ' + highScore, W - 90, 34);
+    }
+
+    // ---------- GAME LOOP (UPDATE) ----------
+    function update() {
+      if (gameState !== STATE.PLAYING) return;
+
+      // Gerak player
+      player.x += player.dx;
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.w > W) player.x = W - player.w;
+
+      // spawn obstacle
+      obstacleTimer++;
+      if (obstacleTimer >= obstacleInterval) {
+        obstacleTimer = 0;
+        spawnObstacle();
+        // tingkat kesulitan: interval makin cepat
+        if (obstacleInterval > 16) {
+          obstacleInterval = Math.max(16, obstacleInterval - 0.3);
+        }
+        speedBase += 0.05;
+      }
+
+      // update obstacle & collision
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        o.y += o.speedY;
+
+        // collision dengan player
+        if (rectCollide(player.x, player.y - 12, player.w, player.h-6, o.x, o.y, o.w, o.h)) {
+          // GAME OVER
+          gameState = STATE.GAMEOVER;
+          updateHighScore();
+          finalScore.textContent = score;
+          finalHigh.textContent = highScore;
+          gameoverScreen.classList.add('active');
+          pauseBadge.classList.remove('show');
+          return;
+        }
+
+        // offscreen
+        if (o.y > H + 20) {
+          obstacles.splice(i, 1);
+          score += 5;
+        }
+      }
+
+      // update bintang
+      stars.forEach(s => {
+        s.y += s.speed;
+        if (s.y > H) { s.y = -2; s.x = Math.random() * W; }
+      });
+    }
+
+    // ---------- RENDER ----------
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+      drawStars();
+      drawObstacles();
+      drawPlayer();
+      if (gameState === STATE.PLAYING || gameState === STATE.PAUSED) {
+        drawUI();
+      }
+    }
+
+    // ---------- LOOP ----------
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ---------- KONTROL ----------
+    function setPlayerDirection(dx) {
+      if (gameState === STATE.PLAYING) {
+        player.dx = dx * player.speed;
+      }
+    }
+
+    function togglePause() {
+      if (gameState === STATE.PLAYING) {
+        gameState = STATE.PAUSED;
+        pauseBadge.classList.add('show');
+        pauseBtn.textContent = '▶';
+      } else if (gameState === STATE.PAUSED) {
+        gameState = STATE.PLAYING;
+        pauseBadge.classList.remove('show');
+        pauseBtn.textContent = '⏸';
+      }
+    }
+
+    // ---------- START / RESTART / MENU ----------
+    function startGame() {
+      resetGame();
+      gameState = STATE.PLAYING;
+      menuScreen.classList.remove('active');
+      gameoverScreen.classList.remove('active');
+      pauseBadge.classList.remove('show');
+      pauseBtn.textContent = '⏸';
+      // reset speed
+      speedBase = 2.5;
+      obstacleInterval = 40;
+    }
+
+    function goToMenu() {
+      gameState = STATE.MENU;
+      menuScreen.classList.add('active');
+      gameoverScreen.classList.remove('active');
+      pauseBadge.classList.remove('show');
+      pauseBtn.textContent = '⏸';
+      menuHigh.textContent = highScore;
+    }
+
+    // ---------- EVENT LISTENER ----------
+    // Tombol
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', () => { startGame(); });
+    menuBtn.addEventListener('click', goToMenu);
+
+    pauseBtn.addEventListener('click', togglePause);
+
+    // kontrol kiri/kanan (touch & mouse)
+    moveLeft.addEventListener('mousedown', (e) => { e.preventDefault(); setPlayerDirection(-1); });
+    moveLeft.addEventListener('mouseup', (e) => { e.preventDefault(); setPlayerDirection(0); });
+    moveLeft.addEventListener('mouseleave', () => { setPlayerDirection(0); });
+    moveRight.addEventListener('mousedown', (e) => { e.preventDefault(); setPlayerDirection(1); });
+    moveRight.addEventListener('mouseup', (e) => { e.preventDefault(); setPlayerDirection(0); });
+    moveRight.addEventListener('mouseleave', () => { setPlayerDirection(0); });
+
+    // touch events
+    moveLeft.addEventListener('touchstart', (e) => { e.preventDefault(); setPlayerDirection(-1); }, {passive: false});
+    moveLeft.addEventListener('touchend', (e) => { e.preventDefault(); setPlayerDirection(0); }, {passive: false});
+    moveLeft.addEventListener('touchcancel', (e) => { setPlayerDirection(0); });
+    moveRight.addEventListener('touchstart', (e) => { e.preventDefault(); setPlayerDirection(1); }, {passive: false});
+    moveRight.addEventListener('touchend', (e) => { e.preventDefault(); setPlayerDirection(0); }, {passive: false});
+    moveRight.addEventListener('touchcancel', (e) => { setPlayerDirection(0); });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') {
+        e.preventDefault();
+        setPlayerDirection(-1);
+      } else if (e.key === 'ArrowRight' || e.key === 'd') {
+        e.preventDefault();
+        setPlayerDirection(1);
+      } else if (e.key === 'p' || e.key === 'P') {
+        if (gameState === STATE.PLAYING || gameState === STATE.PAUSED) togglePause();
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        if (gameState === STATE.MENU) startGame();
+        else if (gameState === STATE.GAMEOVER) startGame();
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ArrowRight' || e.key === 'd') {
+        setPlayerDirection(0);
+      }
+    });
+
+    // Jaga agar canvas tidak kehilangan fokus sentuhan
+    canvas.addEventListener('touchstart', (e) => e.preventDefault());
+
+    // Inisialisasi high di menu
+    menuHigh.textContent = highScore;
+
+    // Mulai loop
+    gameLoop();
+  })();
+</script>
+</body>
+</html>
